@@ -1,11 +1,13 @@
-## My Project
+## Sample schemas for Amazon Aurora PostgreSQL Limitless Database
 
-TODO: Fill this README out!
+This GitHub repository contains sample schemas to help developers quickly create a sample database and load data into Aurora Limitless Database tables.
 
-Be sure to:
+Each sample schema includes a README file that explains how to run and use the sample.
 
-* Change the title in this README
-* Edit your repository description on GitHub
+## Sample schemas:
+
+1. [Limitless E-Commerce sample schema (ec_sample schema)](https://github.com/aws-samples/sample-schemas-for-amazon-aurora-postgresql-limitless-database/tree/main/limitless_ec_sample_schema) 
+2. [Limitless pgbench](https://github.com/aws-samples/sample-schemas-for-amazon-aurora-postgresql-limitless-database/tree/main/limitless_pgbench)
 
 ## Security
 
