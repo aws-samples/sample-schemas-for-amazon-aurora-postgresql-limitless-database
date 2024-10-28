@@ -7,7 +7,7 @@
 \echo '                      '
 CALL rds_aurora.limitless_alter_table_type_sharded('ec_sample.customers', ARRAY['customer_id']);
 \echo '                      '
-\echo Convert orders and  orderdetails tables to colocated tables:
+\echo Convert orders and  orderdetails tables to collocated tables:
 \echo +---------------------------------------------------------+
 \echo '                      '
 CALL rds_aurora.limitless_alter_table_type_sharded('ec_sample.orders', ARRAY['customer_id'], 'ec_sample.customers');

@@ -62,7 +62,9 @@ The steps outlined can be modified to generate sample data of varying sizes, as 
 2- Convert E-Commerce sample schema's standard tables to limitless tables
 
 Convert customers table to sharded table using `customer_id` shard key.
+
 Convert orders and  orderdetails tables to collocated tables using `customer_id`.
+
 Convert products table to a reference table.
 
 ```
