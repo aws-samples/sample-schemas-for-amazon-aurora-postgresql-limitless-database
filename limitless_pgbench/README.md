@@ -13,7 +13,7 @@ Running pgbench on an ```Amazon Aurora Limitless Database``` requires some consi
 
 ## Prerequisites:
 
-1. Perl
+1. Python3 - [Download and Install](https://www.python.org/downloads/)
 2. PostgreSQL client of version 16 or higher in the PATH.
     Note: PostgreSQL client Version 16 or higher allows for [connection load balancing](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-LOAD-BALANCE-HOSTS). This is beneficial for Limitless to distribute connections to multiple routers.
 3. Familialarity with pgbench [0]
@@ -23,8 +23,8 @@ Running pgbench on an ```Amazon Aurora Limitless Database``` requires some consi
 
 Below are the differences between standard ```pgbench``` and ```limitless_pgbench```
 
-1. Unlike standard pgbench, the ```-d``` should be passed to specify the dbname.
-2. ```--limitless-workload``` is an option to execute a specific built-in workload. The valid options are "tpcp-like", "simple-update" and "select-only". This will run the built-in workloads allowed by a standard pgbench [2], but with modifications for Limitless. The workloads ad associated scripts are:
+
+1. ```--limitless-workload``` is an option to execute a specific built-in workload. The valid options are "tpcp-like", "simple-update" and "select-only". This will run the built-in workloads allowed by a standard pgbench [2], but with modifications for Limitless. The workloads ad associated scripts are:
     ##### tpcb-like:
     ```
     \set aid random(1, 100000 * :scale)
@@ -59,10 +59,10 @@ Below are the differences between standard ```pgbench``` and ```limitless_pgbenc
     \set bid (:aid - 1) / 100000 + 1
     SELECT abalance FROM pgbench_accounts WHERE aid = :aid AND bid = :bid;   
     ```
-3. ```--pipelined``` is an option to execute a specific built-in workload in pipelined mode [1].
-4. When a pgbench benchmark script is executed, the hostname in the connection is checked for being a Limitless Cluster endpoint. If so, the router endpoints are then discovered and used to connect to pgbench. This is done to ensure that the benchmark workload is evenly distributed across all routers.
-5. During the ```initialize``` step, the command line can accept a ```-c``` flag to run the ```initialize``` step with multiple clients. This speeds up this step and takes advantage of the distributed nature of the Limitless Cluster and speed up this step.
-6. The database password must be set in the ```PGPASSWORD``` environment variable.
+2. ```--pipelined``` is an option to execute a specific built-in workload in pipelined mode [1].
+3. When a pgbench benchmark script is executed, the hostname in the connection is checked for being a Limitless Cluster endpoint. If so, the router endpoints are then discovered and used to connect to pgbench. This is done to ensure that the benchmark workload is evenly distributed across all routers.
+4. During the ```initialize``` step, the command line can accept a ```-c``` flag to run the ```initialize``` step with multiple clients. This speeds up this step and takes advantage of the distributed nature of the Limitless Cluster and speed up this step.
+5. The database password must be set in the ```PGPASSWORD``` environment variable.
 
 ## Example
 The following example demostrates how to run a pgbench on a ```Amazon Aurora Limitless Database```. In this example, the Limitless endpoint is ```demo-1.limitless-abcdefghijk.us-east-1.rds.amazonaws.com```, the user is ```postgres``` and the database is ```postgres_limitless```. 50 clients and a scale of 250 is used.
