@@ -38,7 +38,7 @@ export PGUSER=<User Name>
 export PGPASSWORD=<Password>
 export PGDATABASE=postgres_limitless
 
-export PGHOST=$(psql -tAc "select ROUTER_ENDPOINT from aurora_limitless_router_endpoints()" | paste -sd,)
+export PGHOST=$(psql --no-psqlrc -tAc "select ROUTER_ENDPOINT from aurora_limitless_router_endpoints()" | paste -sd,)
 echo $PGHOST
 export PGLOADBALANCEHOSTS=random
 export PGCONNECT_TIMEOUT=60 
