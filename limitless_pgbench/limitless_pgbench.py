@@ -58,7 +58,7 @@ def get_limitless_endpoints(connstring_check, host):
         "ON n.oid = p.pronamespace "
         "WHERE n.nspname = 'rds_aurora' AND proname = 'limitless_stat_activity'"
     )
-    ll_routers_sql = "SELECT STRING_AGG(dns_host, ',') dns_string FROM aurora_limitless_router_endpoints()"
+    ll_routers_sql = "SELECT STRING_AGG(router_endpoint, ',') dns_string FROM aurora_limitless_router_endpoints()"
 
     endpoint = os.getenv('PGHOST', '') if host == "" else host
 
