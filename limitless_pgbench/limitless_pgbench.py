@@ -25,6 +25,9 @@ import sys
 def trim(string):
     return re.sub(r'^\s+|\s+$', '', string)
 
+def clean_args(string):
+    return string.strip().split()
+
 # Function to check prerequisites
 def prereq_check():
     try:
@@ -73,6 +76,17 @@ def get_limitless_endpoints(connstring_check, host):
         return ["-h", ll_routers_string, "-U", args.username, "-d", args.dbname]
     else:
         return connstring_check
+
+def get_scale_factor(connstring_check, host):
+    get_scale_factor_sql = (
+        "SELECT COUNT(*) FROM pgbench_branches"
+    )
+
+    scale_factor = trim(
+        subprocess.getoutput(f"psql {connstring_check} -Aqt -c \"{get_scale_factor_sql}\"")
+    )
+
+    return ''.join(scale_factor)
 
 """
 ParseArguments()
@@ -129,8 +143,11 @@ def parse_arguments():
         pgbench_flags += f" -f {args.file}"
     if args.builtin:
         pgbench_flags += f" -b {args.builtin}"
+    print(args.scale, args.limitless_workload)
+    if (args.limitless_workload != "" and args.scale != 0):
+        raise SystemExit("ERROR: Cannot set limitless-workload and scale together.")
 
-    return args, connstring_check.strip(), pgbench_flags.strip().split()
+    return args, connstring_check.strip(), clean_args(pgbench_flags)
 
 if __name__ == "__main__":
     # If no options are provided
@@ -150,9 +167,7 @@ if __name__ == "__main__":
     # Run the prerequisite check
     prereq_check()
     
-    connstring_final = get_limitless_endpoints(connstring_check, args.host) #if args.host == '' else connstring_check.split()
-    #connstring_final = connstring_check.split()
-    #print(f"connstring_final: {connstring_final}")
+    connstring_final = get_limitless_endpoints(connstring_check, args.host)
 
     if args.initialize:
         # Initialize SQL script
@@ -282,61 +297,57 @@ if __name__ == "__main__":
             if pipe.returncode != 0:
                 raise SystemExit("Failed to finalize pgbench initialization.")
     else:
-    # if the user did not request a limitless workload, just do the work as requested.
-        #connstring_final = get_limitless_endpoints('', args.host) if args.host == '' else connstring_check.split()
         if args.limitless_workload:
-        # Handle limitless workload
-                benchmark_sql = ""
-                if args.limitless_workload not in ["simple-update", "select-only", "tpcb-like"]:
-                    raise SystemExit("Invalid limitless-workload set")
+            # Handle limitless workload
+            benchmark_sql = ""
+            if args.limitless_workload not in ["simple-update", "select-only", "tpcb-like"]:
+                raise SystemExit("Invalid limitless-workload set")
     
-                    if args.limitless_workload == "simple-update":
-                        benchmark_sql = r"""
-                                \set aid random(1, 100000 * :scale)
-                            \set bid random(1, 1 * :scale)
-                            \set tid random(1, 10 * :scale)
-                            \set delta random(-5000, 5000)
-                            BEGIN;
-                                UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid AND bid = :bid;
-                                SELECT abalance FROM pgbench_accounts WHERE aid = :aid AND bid = :bid;
-                                INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) VALUES (:tid, :bid, :aid, :delta, CURRENT_TIMESTAMP);
-                            END;
-                        """
-                    elif args.limitless_workload == "select-only":
-                        benchmark_sql = r"""
-                            \set aid random(1, 100000 * :scale)
-                            \set bid (:aid - 1) / 100000 + 1
-                            SELECT abalance FROM pgbench_accounts WHERE aid = :aid AND bid = :bid;
-                        """
-                else:
-                    benchmark_sql = r"""
-                        \set aid random(1, 100000 * :scale)
-                        \set bid (:aid - 1) / 100000 + 1
-                        \set tid random(1, 10 * :scale)
-                        \set delta random(-5000, 5000)
-                        BEGIN;
-                            UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid AND bid = :bid;
-                            SELECT abalance FROM pgbench_accounts WHERE aid = :aid AND bid = :bid;
-                            UPDATE pgbench_tellers SET tbalance = tbalance + :delta WHERE tid = :tid AND bid = :bid;
-                            UPDATE pgbench_branches SET bbalance = bbalance + :delta WHERE bid = :bid;
-                            INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) VALUES (:tid, :bid, :aid, :delta, NULL);
-                        END;
-                    """
-    
-                benchmark_cmd = ["pgbench"] + connstring_final + pgbench_flags + ["--file=-"]
-                env = os.environ.copy()
-                env['PGLOADBALANCEHOSTS'] = "random"
-                #print(f"exeucted PGLOADBALANCEHOSTS: ", env['PGLOADBALANCEHOSTS'])
+            if args.limitless_workload == "simple-update":
+                benchmark_sql = r"""
+                    \set aid random(1, 100000 * :scale)
+                    \set bid random(1, 1 * :scale)
+                    \set tid random(1, 10 * :scale)
+                    \set delta random(-5000, 5000)
+                    BEGIN;
+                        UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid AND bid = :bid;
+                        SELECT abalance FROM pgbench_accounts WHERE aid = :aid AND bid = :bid;
+                        INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) VALUES (:tid, :bid, :aid, :delta, CURRENT_TIMESTAMP);
+                    END;
+                """
+            elif args.limitless_workload == "select-only":
+                benchmark_sql = r"""
+                    \set aid random(1, 100000 * :scale)
+                    \set bid (:aid - 1) / 100000 + 1
+                    SELECT abalance FROM pgbench_accounts WHERE aid = :aid AND bid = :bid;
+                """
+            else:
+                benchmark_sql = r"""
+                    \set aid random(1, 100000 * :scale)
+                    \set bid (:aid - 1) / 100000 + 1
+                    \set tid random(1, 10 * :scale)
+                    \set delta random(-5000, 5000)
+                    BEGIN;
+                        UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid AND bid = :bid;
+                        SELECT abalance FROM pgbench_accounts WHERE aid = :aid AND bid = :bid;
+                        UPDATE pgbench_tellers SET tbalance = tbalance + :delta WHERE tid = :tid AND bid = :bid;
+                        UPDATE pgbench_branches SET bbalance = bbalance + :delta WHERE bid = :bid;
+                        INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) VALUES (:tid, :bid, :aid, :delta, NULL);
+                    END;
+                """
+            pgbench_flags_extras = clean_args(f" -D scale={get_scale_factor(connstring_check, args.host)}")
+            benchmark_cmd = ["pgbench"] + connstring_final + pgbench_flags + pgbench_flags_extras + ["--file=-"]
+            env = os.environ.copy()
+            env['PGLOADBALANCEHOSTS'] = "random"
 
-                #print(f"benchmark_cmd: {benchmark_cmd}")
-                with subprocess.Popen(benchmark_cmd, stdin=subprocess.PIPE, env = env) as pipe:
-                    if args.pipelined:
-                        benchmark_sql = f"\\startpipeline\n{benchmark_sql}\n\\endpipeline"
+            with subprocess.Popen(benchmark_cmd, stdin=subprocess.PIPE, env = env) as pipe:
+                if args.pipelined:
+                    benchmark_sql = f"\\startpipeline\n{benchmark_sql}\n\\endpipeline"
     
-                    pipe.communicate(benchmark_sql.encode())
-                    if pipe.returncode != 0:
-                        raise SystemExit("Failed to run limitless workload benchmark.")
+                pipe.communicate(benchmark_sql.encode())
+
+                if pipe.returncode != 0:
+                    raise SystemExit("Failed to run limitless workload benchmark.")
         else:
-            print(f"last statement: {connstring_final}, {pgbench_flags}")
             subprocess.run(["pgbench"] + connstring_final + pgbench_flags, check=True)
 
